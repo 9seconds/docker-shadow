@@ -29,10 +29,10 @@
 
 - name: get config
   become: true
-  command: docker exec {{ container_name | quote }} sh -c 'show'
+  command: docker exec {{ container_name | quote }} sh -c show
   changed_when: false
   register: output
 
 - name: configuration of shadowsocks
   debug:
-    var: "{{ output.stdout | from_json }}"
+    msg: "{{ output.stdout | from_json }}"
