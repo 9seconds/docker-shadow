@@ -1,0 +1,38 @@
+---
+# vim: set ft=ansible:
+
+- name: get my public IP
+  ipify_facts:
+  when: not(shadowsocks_ip_address is defined)
+
+- name: define own ip address
+  set_fact:
+    own_ip_address: "{{ shadowsocks_ip_address | default(ansible_facts.ipify_public_ip) }}"
+
+- name: copy systemd service file for shadowsocks
+  become: true
+  template:
+    src: shadow.service.j2
+    dest: /etc/systemd/system/shadow.service
+    owner: root
+    group: root
+    mode: 0644
+  notify: docker-shadow updated
+
+- name: run shadowsocks
+  become: true
+  systemd:
+    daemon_reload: yes
+    name: "{{ systemd_service_name }}"
+    state: started
+    enabled: yes
+
+- name: get config
+  become: true
+  command: docker exec {{ container_name | quote }} sh -c 'show'
+  changed_when: false
+  register: output
+
+- name: configuration of shadowsocks
+  debug:
+    var: output.stdout

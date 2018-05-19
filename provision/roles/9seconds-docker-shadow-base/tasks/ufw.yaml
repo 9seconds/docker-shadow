@@ -1,0 +1,36 @@
+---
+# vim: set ft=ansible:
+
+- name: disable ufw
+  become: true
+  ufw:
+    state: disabled
+
+- name: reset ufw
+  become: true
+  ufw:
+    state: reset
+
+- name: set default rules
+  become: true
+  ufw:
+    direction: "{{ item.key }}"
+    policy: "{{ item.value }}"
+  with_dict:
+    incoming: deny
+    outgoing: allow
+
+
+- name: enable applications
+  become: true
+  ufw:
+    name: "{{ item }}"
+    rule: allow
+  with_items:
+    - OpenSSH
+    - mosh
+
+- name: enable ufw
+  become: true
+  ufw:
+    state: enabled

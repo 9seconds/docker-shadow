@@ -1,0 +1,12 @@
+{{ ansible_managed | comment }}
+
+[Unit]
+Description=Shadowsocks
+
+[Service]
+ExecStart=/usr/bin/docker run --rm=true --log-driver none --name {{ container_name | quote }} -p {{ shadowsocks_port }}:443/tcp -p {{ shadowsocks_port }}:443/udp -p {{ kcptun_port }}:444/udp nineseconds/docker-shadow {{ own_ip_address | quote }} {{ shadowsocks_entrypoint }}
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

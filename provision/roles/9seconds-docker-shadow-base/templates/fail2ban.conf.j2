@@ -1,0 +1,15 @@
+{{ ansible_managed | comment }}
+
+[sshd]
+enabled = true
+action = ufw[application=OpenSSH]
+maxretry = 3
+bantime = 3600
+findtime = 60
+
+[sshd-ddos]
+enabled = true
+action = ufw[application=OpenSSH]
+maxretry = 2
+bantime = 7200
+findtime = 10

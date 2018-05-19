@@ -1,0 +1,8 @@
+---
+# vim: set ft=ansible:
+
+- include: ./docker.yaml
+- include: ./shadow.yaml
+
+- include: ./ufw.yaml
+  when: use_ufw

@@ -1,0 +1,57 @@
+---
+# vim: set ft=ansible:
+
+- name: copy sources.list
+  become: true
+  template:
+    src: sources.list.j2
+    dest: /etc/apt/sources.list
+    owner: root
+    group: root
+    mode: 0644
+
+- name: remove apt packages
+  become: true
+  apt:
+    name: "{{ item }}"
+    state: absent
+    purge: yes
+    autoremove: yes
+  with_items: "{{ apt_to_remove }}"
+  notify: apt changed
+
+- name: upgrade apt packages
+  become: true
+  apt:
+    update_cache: yes
+    upgrade: full
+  notify: apt changed
+
+- name: install mandatory packages
+  become: true
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ apt_mandatory_packages }}"
+  notify: apt changed
+
+- name: enable unattended upgrades
+  become: true
+  lineinfile:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    regexp: "^{{ item.key }}"
+    line: "{{ item.value }}"
+  with_dict:
+    'APT::Periodic::Update-Package-Lists': 'APT::Periodic::Update-Package-Lists "1";'
+    'APT::Periodic::Unattended-Upgrade': 'APT::Periodic::Unattended-Upgrade "1";'
+
+- name: configure unattended upgrades options
+  become: true
+  lineinfile:
+    path: /etc/apt/apt.conf.d/50unattended-upgrades
+    regexp: "^//{{ item.key }}"
+    line: '{{ item.key }} "{{ item.value }}";'
+  with_dict:
+    'Unattended-Upgrade::Remove-Unused-Kernel-Packages': "true"
+    'Unattended-Upgrade::Remove-Unused-Dependencies': "true"
+    'Unattended-Upgrade::Automatic-Reboot': "true"

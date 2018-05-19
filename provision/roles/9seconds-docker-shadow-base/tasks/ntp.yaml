@@ -1,0 +1,54 @@
+---
+# vim: set ft=ansible:
+
+- name: remove ntp
+  become: true
+  apt:
+    name: "{{ item }}"
+    state: absent
+    purge: yes
+    autoremove: yes
+  with_items:
+    - ntp
+    - ntpdate
+  notify: apt changed
+
+- name: find out current timezone
+  command: cat /etc/timezone
+  failed_when: false
+  changed_when: false
+  register: etc_timezone
+
+- name: find out current ntp settings
+  shell: timedatectl status | grep -E ^NTP | cut -f3- -d" "
+  failed_when: false
+  changed_when: false
+  register: ntp_status
+
+- name: set timezone
+  become: true
+  command: timedatectl set-timezone {{ ntp_timezone | quote }}
+  when: (etc_timezone is failed) or (etc_timezone.stdout | trim) != ntp_timezone
+  notify: restart timesyncd
+
+- name: set ntp
+  become: true
+  command: timedatectl set-ntp true
+  when: (ntp_status is failed) or (ntp_status.stdout | trim | lower) != 'yes'
+  notify: restart timesyncd
+
+- name: ensure timesyncd.d directory created
+  become: true
+  file:
+    path: /etc/systemd/timesyncd.conf.d
+    state: directory
+
+- name: set timesyncd config
+  become: true
+  template:
+    src: timesyncd.conf.j2
+    dest: /etc/systemd/timesyncd.conf.d/zzz-own-config.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart timesyncd

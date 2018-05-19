@@ -1,0 +1,16 @@
+---
+# vim: set ft=ansible:
+
+apt_to_remove:
+  - lxd
+  - snapd
+  - lxcfs
+
+apt_mandatory_packages:
+  - fail2ban
+  - htop
+  - mosh
+  - tmux
+  - ufw
+  - unattended-upgrades
+  - vim

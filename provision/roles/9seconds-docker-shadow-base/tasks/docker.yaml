@@ -1,0 +1,54 @@
+---
+# vim: set ft=ansible:
+
+- name: install docker key
+  become: true
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: add docker repository
+  become: true
+  apt_repository:
+    # TODO: Move to stable when DOCKER FINALLY SUPPORT BIONIC
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} edge
+    filename: docker
+    state: present
+    update_cache: yes
+
+- name: ensure docker.service.d is created
+  become: true
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+
+- name: ensure correct docker.conf for systemd is created
+  become: true
+  template:
+    src: docker.conf.j2
+    dest: /etc/systemd/system/docker.service.d/docker.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: install docker
+  become: true
+  apt:
+    name: docker-ce
+    state: present
+  notify:
+    - restart docker
+    - apt changed
+
+- name: add docker group
+  become: true
+  group:
+    name: docker
+    state: present
+
+- name: add user to docker group
+  become: true
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes

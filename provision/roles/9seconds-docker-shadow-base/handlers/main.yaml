@@ -1,0 +1,43 @@
+---
+# vim: set ft=ansible:
+
+- name: apt autoremove
+  become: true
+  command: apt autoremove --yes --purge
+  listen: apt changed
+
+- name: apt clean
+  become: true
+  command: apt clean
+  listen: apt changed
+
+- name: restart timesyncd
+  become: true
+  systemd:
+    daemon_reload: yes
+    name: systemd-timesyncd
+    state: restarted
+    enabled: yes
+
+- name: restart docker
+  become: true
+  systemd:
+    daemon_reload: yes
+    name: docker
+    state: restarted
+    enabled: yes
+
+- name: docker system prune
+  become: true
+  command: docker system prune -f
+  args:
+    warn: no
+  listen: docker new images
+
+- name: restart fail2ban
+  become: true
+  systemd:
+    daemon_reload: yes
+    name: fail2ban
+    state: restarted
+    enabled: yes

@@ -1,0 +1,23 @@
+---
+# vim: set ft=ansible:
+
+- name: ensure ufw application directory exists
+  become: true
+  file:
+    path: /etc/ufw/applications.d
+    state: directory
+
+- name: copy shadow config
+  become: true
+  template:
+    src: shadow.ufw.j2
+    dest: /etc/ufw/applications.d/shadowsocks
+    owner: root
+    group: root
+    mode: 0644
+
+- name: enable shadow in ufw
+  become: true
+  ufw:
+    name: Shadowsocks
+    rule: allow

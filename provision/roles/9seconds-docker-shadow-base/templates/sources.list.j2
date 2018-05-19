@@ -1,0 +1,5 @@
+{{ ansible_managed | comment }}
+
+deb {{ ubuntu_mirror }} {{ ubuntu_distro }} main restricted universe multiverse
+deb {{ ubuntu_mirror }} {{ ubuntu_distro }}-security main restricted universe multiverse
+deb {{ ubuntu_mirror }} {{ ubuntu_distro }}-updates main restricted universe multiverse

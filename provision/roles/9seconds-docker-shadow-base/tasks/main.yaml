@@ -1,0 +1,9 @@
+---
+# vim: set ft=ansible:
+
+- include: ./apt.yaml
+- include: ./ntp.yaml
+- include: ./locales.yaml
+- include: ./docker.yaml
+# - include: ./fail2ban.yaml
+- include: ./ufw.yaml

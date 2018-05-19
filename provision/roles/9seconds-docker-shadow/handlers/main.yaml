@@ -1,0 +1,10 @@
+---
+# vim: set ft=ansible:
+
+- name: docker-shadow updated
+  become: true
+  systemd:
+    daemon_reload: yes
+    name: "{{ systemd_service_name }}"
+    state: restarted
+    enabled: yes
