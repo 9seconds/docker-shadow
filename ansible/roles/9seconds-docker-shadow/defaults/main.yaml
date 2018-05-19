@@ -7,6 +7,7 @@ container_name: shadowsocks
 
 shadowsocks_port: 443
 kcptun_port: 444
+shadowsocks_password: password
 shadowsocks_entrypoint: obfs tls
 # if you do not setup this address, it will use ansible_default_ipv4.address
 # shadowsocks_ip_address: 127.0.0.1
