@@ -315,9 +315,15 @@ def run_show(options):
     ).format(
         urllib.quote_plus(base_url)
     )
-
-    print("URL:\n{0}\n".format(base_url))
-    print("QR Code URL:\n{0}".format(qr_url))
+    print(
+        json.dumps(
+            {
+                "url": base_url,
+                "qr": qr_url
+            },
+            indent=4, sort_keys=True
+        )
+    )
 
 
 def make_sip002_url(options):
