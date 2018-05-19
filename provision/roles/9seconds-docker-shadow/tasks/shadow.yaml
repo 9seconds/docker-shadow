@@ -35,4 +35,4 @@
 
 - name: configuration of shadowsocks
   debug:
-    var: output.stdout
+    var: "{{ output.stdout | from_json }}"
