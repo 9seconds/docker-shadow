@@ -20,3 +20,6 @@ ntp_fallback_servers:
 
 docker_bip: 10.201.0.2/24
 docker_storage_driver: overlay2
+
+sysctl_settings:  # all net.* are in docker-shadow role
+  'fs.file-max': 51200

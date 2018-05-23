@@ -1,0 +1,11 @@
+---
+# vim: set ft=ansible:
+
+- name: set sysctl settings
+  become: true
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  with_dict: "{{ sysctl_settings }}"

@@ -6,4 +6,5 @@
 - include: ./locales.yaml
 - include: ./docker.yaml
 - include: ./fail2ban.yaml
+- include: ./sysctl.yaml
 - include: ./ufw.yaml
