@@ -4,7 +4,7 @@
 Description=Shadowsocks
 
 [Service]
-ExecStart=/usr/bin/docker run --rm=true --log-driver none --name {{ container_name | quote }} -p {{ shadowsocks_port }}:443/tcp -p {{ shadowsocks_port }}:443/udp -p {{ kcptun_port }}:444/udp nineseconds/docker-shadow --password {{ shadowsocks_password | quote }} {{ own_ip_address | quote }} {{ shadowsocks_entrypoint }}
+ExecStart=/bin/bash /usr/share/docker-shadow.sh
 Restart=always
 RestartSec=3
 

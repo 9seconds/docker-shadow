@@ -1,0 +1,17 @@
+---
+# vim: set ft=ansible:
+
+# https://github.com/fconn/ss2ch/wiki/%D0%9E%D0%BF%D1%82%D0%B8%D0%BC%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F-%D1%81%D0%B5%D1%80%D0%B2%D0%B5%D1%80%D0%B0
+shadowsocks_sysctl:
+  'net.ipv4.ip_local_port_range': 10000 65000
+  'net.ipv4.tcp_congestion_control': bbr
+  'net.ipv4.tcp_fastopen': 3
+  'net.ipv4.tcp_fin_timeout': 30
+  'net.ipv4.tcp_keepalive_time': 1200
+  'net.ipv4.tcp_max_syn_backlog': 4096
+  'net.ipv4.tcp_max_tw_buckets': 5000
+  'net.ipv4.tcp_mtu_probing': 1
+  'net.ipv4.tcp_rmem': 4096 87380 67108864
+  'net.ipv4.tcp_syncookies': 1
+  'net.ipv4.tcp_tw_reuse': 1
+  'net.ipv4.tcp_wmem': 4096 65536 67108864

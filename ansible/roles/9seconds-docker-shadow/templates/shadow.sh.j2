@@ -1,0 +1,18 @@
+#!/bin/bash
+# vim: set ft=sh:
+{{ ansible_managed | comment }}
+set -eu -o pipefail
+
+exec /usr/bin/docker run \
+    --rm \
+    --log-driver none \
+    --name {{ container_name | quote }} \
+    -p {{ shadowsocks_port }}:443/tcp \
+    -p {{ shadowsocks_port }}:443/udp \
+    -p {{ kcptun_port }}:444/udp \
+    {% for key, value in (shadowsocks_sysctl | dictsort) %}--sysctl {{
+        "%s=%s" | format(key, value) | quote }} \
+    {% endfor %}{{ docker_image | quote }} \
+    --password {{ shadowsocks_password | quote }} \
+    {{ own_ip_address | quote }} \
+    {{ shadowsocks_entrypoint }}

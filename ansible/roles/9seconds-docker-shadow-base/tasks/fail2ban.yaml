@@ -5,7 +5,7 @@
   become: true
   template:
     src: fail2ban.conf.j2
-    dest: /etc/fail2ban/fail.d/shadowsocks.conf
+    dest: /etc/fail2ban/jail.d/shadowsocks.conf
     owner: root
     group: root
     mode: 0644

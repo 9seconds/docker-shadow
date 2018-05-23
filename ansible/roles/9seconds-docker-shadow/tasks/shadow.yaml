@@ -9,6 +9,15 @@
   set_fact:
     own_ip_address: "{{ shadowsocks_ip_address | default(ansible_facts.ipify_public_ip) }}"
 
+- name: copy template run file for shadowsocks
+  become: true
+  template:
+    src: shadow.sh.j2
+    dest: /usr/share/docker-shadow.sh
+    owner: root
+    group: root
+    mode: 0755
+
 - name: copy systemd service file for shadowsocks
   become: true
   template:
