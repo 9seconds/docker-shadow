@@ -1,0 +1,5 @@
+#!/bin/sh
+# vim: set ft=sh:
+
+exec 2>&1
+exec /usr/bin/ss-server -c /etc/shadowsocks-obfs.json

@@ -13,13 +13,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 const (
-	pathOwnConfig               = "entrypoint.json"
-	pathShadowsocksSimpleConfig = "ss-simple.json"
-	pathSHadowsocksObfsConfig   = "ss-obfs.json"
-	pathKCPTunConfig            = "kcptun.json"
+	pathOwnConfig               = "/config.json"
+	pathShadowsocksSimpleConfig = "/etc/shadowsocks-simple.json"
+	pathSHadowsocksObfsConfig   = "/etc/shadowsocks-obfs.json"
+	pathKCPTunConfig            = "/etc/kcptun.json"
 
 	defaultShadowSocksReustPort  = true
 	defaultShadowSocksIPV6First  = true
@@ -288,6 +289,10 @@ func mainRun(conf *ownConfig) {
 	}
 	if err := writeConfig(pathKCPTunConfig, conf.kcpTunConfig()); err != nil {
 		log.Fatal("Cannot write kcptun config: %s", err.Error())
+	}
+
+	if err := syscall.Exec("/sbin/runsvdir", []string{"/sbin/runsvdir", "/etc/service"}, os.Environ()); err != nil {
+		log.Fatal(err.Error())
 	}
 }
 
