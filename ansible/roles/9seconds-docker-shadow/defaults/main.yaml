@@ -35,4 +35,4 @@ shadow_config:
     key: kcptuniskcptun
 
 shadowsocks_port: 443
-kcptun_port: 445
+kcptun_port: 444
