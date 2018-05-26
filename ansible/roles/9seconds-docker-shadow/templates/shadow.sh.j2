@@ -10,7 +10,7 @@ SS_SIMPLE_PORT="-p {{ shadowsocks_simple_port }}:443/tcp -p {{ shadowsocks_simpl
 
 SS_OBFS_PORT=""
 {% if shadowsocks_obfs_port is defined %}
-SS_SIMPLE_PORT="-p {{ shadowsocks_obfs_port }}:444/tcp -p {{ shadowsocks_obfs_port }}:444/udp"
+SS_OBFS_PORT="-p {{ shadowsocks_obfs_port }}:444/tcp -p {{ shadowsocks_obfs_port }}:444/udp"
 {% endif %}
 
 KCP_PORT=""
