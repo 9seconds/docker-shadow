@@ -190,6 +190,7 @@ func (c *ownConfig) kcpTunConfig() *kcpTunConfigFile {
 		Mode:        c.KCPTun.Profile,
 		Key:         c.KCPTun.Key,
 		DSCP:        c.KCPTun.DSCP,
+		MTU:         c.KCPTun.MTU,
 		NoComp:      !c.KCPTun.Compression,
 		DataShard:   c.KCPTun.DataShard,
 		ParityShard: c.KCPTun.ParityShard,
