@@ -9,6 +9,7 @@ use_ufw: true
 shadow_config:
   # if you won't set this IP, this would be autodetected by ipify
   # ip: 127.0.0.1
+  # name: is also optional
   shadowsocks:
     # following settings are optional. only password is mandatory
     # reuse_port: true
@@ -33,8 +34,5 @@ shadow_config:
     # parityshard: 3
     key: kcptuniskcptun
 
-shadowsocks_simple_port: 443
-shadowsocks_obfs_port: 444
+shadowsocks_port: 443
 kcptun_port: 445
-shadowsocks_password: password
-shadowsocks_entrypoint: obfs tls

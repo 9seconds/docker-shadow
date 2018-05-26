@@ -2,4 +2,4 @@
 # vim: set ft=sh:
 
 exec 2>&1
-exec /usr/bin/kcp-server -c /etc/shadowsocks-simple.json
+exec /usr/bin/kcp-server -c /etc/kcptun.json

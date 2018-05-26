@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -17,13 +18,12 @@ import (
 )
 
 const (
-	pathOwnConfig               = "/config.json"
-	pathShadowsocksSimpleConfig = "/etc/shadowsocks-simple.json"
-	pathSHadowsocksObfsConfig   = "/etc/shadowsocks-obfs.json"
-	pathKCPTunConfig            = "/etc/kcptun.json"
+	pathOwnConfig         = "/config.json"
+	pathShadowSocksConfig = "/etc/shadowsocks.json"
+	pathKCPTunConfig      = "/etc/kcptun.json"
 
 	defaultShadowSocksReustPort  = true
-	defaultShadowSocksIPV6First  = true
+	defaultShadowSocksIPV6First  = false // 'true' breaks outline
 	defaultShadowSocksFastOpen   = true
 	defaultShadowSocksNoDelay    = true
 	defaultShadowSocksTimeout    = 60
@@ -36,13 +36,13 @@ const (
 	defaultKCPTunCompression = false
 	defaultKCPTunDataShard   = 10
 	defaultKCPTunParityShard = 3
+	defaultKCPTunMTU         = 1350
 
 	defaultObfsMode = "tls"
 	defaultObfsHost = "cx01.cloudfront.net"
 
-	portSimpleShadowSocks = 443
-	portObfsShadowSocks   = 444
-	portKCPTun            = 445
+	portShadowSocks = 443
+	portKCPTun      = 444
 
 	qrCodeURL = `https://api.qrserver.com/v1/create-qr-code/?format=svg&qzone=4&data=%s`
 )
@@ -131,6 +131,7 @@ type kcpTunOwnConfig struct {
 	Crypt       string `json:"crypt"`
 	Compression bool   `json:"compression"`
 	Key         string `json:"key"`
+	MTU         uint   `json:"mtu"`
 	DSCP        uint   `json:"dscp"`
 	DataShard   uint   `json:"datashard"`
 	ParityShard uint   `json:"parityshard"`
@@ -142,6 +143,7 @@ type kcpTunConfigFile struct {
 	Crypt       string `json:"crypt"`
 	Mode        string `json:"mode"`
 	Key         string `json:"key"`
+	MTU         uint   `json:"mtu"`
 	DSCP        uint   `json:"dscp"`
 	NoComp      bool   `json:"nocomp"`
 	DataShard   uint   `json:"datashard"`
@@ -155,15 +157,16 @@ type obfsOwnConfig struct {
 
 type ownConfig struct {
 	IP          string               `json:"ip"`
+	Name        string               `json:"name"`
 	ShadowSocks shadowSocksOwnConfig `json:"shadowsocks"`
 	KCPTun      kcpTunOwnConfig      `json:"kcptun"`
 	OBFS        obfsOwnConfig        `json:"obfs"`
 }
 
-func (c *ownConfig) simpleShadowSocksConfig() *shadowSocksConfigFile {
+func (c *ownConfig) shadowSocksConfig() *shadowSocksConfigFile {
 	return &shadowSocksConfigFile{
 		Server:     []string{"[::0]", "0.0.0.0"},
-		ServerPort: portSimpleShadowSocks,
+		ServerPort: portShadowSocks,
 		Password:   c.ShadowSocks.Password,
 		Method:     c.ShadowSocks.Method,
 		Timeout:    c.ShadowSocks.Timeout,
@@ -174,22 +177,15 @@ func (c *ownConfig) simpleShadowSocksConfig() *shadowSocksConfigFile {
 		IPV6First:  c.ShadowSocks.IPV6First,
 		NameServer: c.ShadowSocks.NameServer,
 		Mode:       "tcp_and_udp",
+		Plugin:     "obfs-server",
+		PluginOpts: fmt.Sprintf("obfs=%s;failover=%s", c.OBFS.Mode, c.OBFS.Host),
 	}
-}
-
-func (c *ownConfig) obfsShadowSocksConfig() *shadowSocksConfigFile {
-	conf := c.simpleShadowSocksConfig()
-	conf.ServerPort = portObfsShadowSocks
-	conf.Plugin = "obfs-server"
-	conf.PluginOpts = fmt.Sprintf("obfs=%s;failover=%s", c.OBFS.Mode, c.OBFS.Host)
-
-	return conf
 }
 
 func (c *ownConfig) kcpTunConfig() *kcpTunConfigFile {
 	return &kcpTunConfigFile{
 		Listen:      fmt.Sprintf(":%d", portKCPTun),
-		Target:      net.JoinHostPort("127.0.0.1", strconv.Itoa(portSimpleShadowSocks)),
+		Target:      net.JoinHostPort("127.0.0.1", strconv.Itoa(portShadowSocks)),
 		Crypt:       c.KCPTun.Crypt,
 		Mode:        c.KCPTun.Profile,
 		Key:         c.KCPTun.Key,
@@ -200,33 +196,32 @@ func (c *ownConfig) kcpTunConfig() *kcpTunConfigFile {
 	}
 }
 
-func (c *ownConfig) simpleShadowSocksURL() *url.URL {
-	return &url.URL{
+func (c *ownConfig) shadowSocksURL() *url.URL {
+	u := &url.URL{
 		Scheme: "ss",
-		Host:   net.JoinHostPort(c.IP, strconv.Itoa(portSimpleShadowSocks)),
+		Host:   net.JoinHostPort(c.IP, strconv.Itoa(portShadowSocks)),
 		User:   url.User(c.getShadowSocksUser()),
+		RawQuery: c.makePluginQuery("obfs-local", map[string]string{
+			"obfs":      c.OBFS.Mode,
+			"obfs-host": c.OBFS.Host,
+		}),
 	}
-}
+	if c.Name != "" {
+		u.Fragment = c.Name
+	}
 
-func (c *ownConfig) obfsShadowSocksURL() *url.URL {
-	base := c.simpleShadowSocksURL()
-	base.Host = net.JoinHostPort(c.IP, strconv.Itoa(portObfsShadowSocks))
-	base.RawQuery = c.makePluginQuery("obfs-local", map[string]string{
-		"obfs":      c.OBFS.Mode,
-		"obfs-host": c.OBFS.Host,
-	})
-
-	return base
+	return u
 }
 
 func (c *ownConfig) kcpTunURL() *url.URL {
-	base := c.simpleShadowSocksURL()
+	base := c.shadowSocksURL()
 	base.Host = net.JoinHostPort(c.IP, strconv.Itoa(portKCPTun))
 	params := map[string]string{
 		"crypt":       c.KCPTun.Crypt,
 		"mode":        c.KCPTun.Profile,
 		"datashard":   strconv.Itoa(int(c.KCPTun.DataShard)),
 		"parityshard": strconv.Itoa(int(c.KCPTun.ParityShard)),
+		"mtu":         strconv.Itoa(int(c.KCPTun.MTU)),
 		"dscp":        strconv.Itoa(int(c.KCPTun.DSCP)),
 		"key":         c.KCPTun.Key,
 	}
@@ -281,11 +276,8 @@ func main() {
 }
 
 func mainRun(conf *ownConfig) {
-	if err := writeConfig(pathShadowsocksSimpleConfig, conf.simpleShadowSocksConfig()); err != nil {
-		log.Fatal("Cannot write simple shadowsocks config: %s", err.Error())
-	}
-	if err := writeConfig(pathSHadowsocksObfsConfig, conf.obfsShadowSocksConfig()); err != nil {
-		log.Fatal("Cannot write obfs shadowsocks config: %s", err.Error())
+	if err := writeConfig(pathShadowSocksConfig, conf.shadowSocksConfig()); err != nil {
+		log.Fatal("Cannot write shadowsocks config: %s", err.Error())
 	}
 	if err := writeConfig(pathKCPTunConfig, conf.kcpTunConfig()); err != nil {
 		log.Fatal("Cannot write kcptun config: %s", err.Error())
@@ -298,23 +290,35 @@ func mainRun(conf *ownConfig) {
 
 func mainShow(conf *ownConfig) {
 	dataToShow := map[string]map[string]string{
-		"simple": makeResult(conf.simpleShadowSocksURL()),
-		"obfs":   makeResult(conf.obfsShadowSocksURL()),
-		"kcptun": makeResult(conf.kcpTunURL()),
+		"shadowsocks": makeResult(conf.shadowSocksURL()),
+		"kcptun":      makeResult(conf.kcpTunURL()),
 	}
 
-	encoder := json.NewEncoder(os.Stdout)
+	if err := encodeJSON(os.Stdout, dataToShow); err != nil {
+		log.Fatal(err.Error())
+	}
+}
+
+func encodeJSON(w io.Writer, value interface{}) error {
+	encoder := json.NewEncoder(w)
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(dataToShow)
+
+	return encoder.Encode(value)
 }
 
 func writeConfig(path string, config interface{}) error {
-	data, err := json.Marshal(config)
+	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, 0644)
+	defer file.Close()
+
+	if err = encodeJSON(file, config); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func makeOwnConfig() (*ownConfig, error) {
@@ -335,6 +339,7 @@ func makeOwnConfig() (*ownConfig, error) {
 			DataShard:   defaultKCPTunDataShard,
 			ParityShard: defaultKCPTunParityShard,
 			DSCP:        defaultKCPTunDSCP,
+			MTU:         defaultKCPTunMTU,
 		},
 		OBFS: obfsOwnConfig{
 			Mode: defaultObfsMode,

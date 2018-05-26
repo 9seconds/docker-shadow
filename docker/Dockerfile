@@ -58,6 +58,5 @@ RUN set -ex \
 
 COPY --from=0 /entry /entry
 COPY --from=xtaci/kcptun:latest /bin/server /usr/bin/kcp-server
-COPY runit/simple/run /etc/service/simple/run
-COPY runit/obfs/run /etc/service/obfs/run
+COPY runit/shadowsocks/run /etc/service/shadowsocks/run
 COPY runit/kcptun/run /etc/service/kcptun/run
