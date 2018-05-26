@@ -14,7 +14,7 @@ FROM shadowsocks/shadowsocks-libev
 USER root
 ENTRYPOINT ["/entry"]
 ENV LD_PRELOAD=/lib/runit-docker.so
-EXPOSE 443/tcp 443/udp 444/tcp 444/udp 445/udp
+EXPOSE 443/tcp 443/udp 444/udp
 
 RUN set -ex \
   && apk add --no-cache --virtual /tmp/build-deps \

@@ -10,7 +10,7 @@ SS_PORT=""
 {% endif %}
 
 {% if kcptun_port is defined %}
-KCP_PORT="-p {{ kcptun_port }}:445/udp"
+KCP_PORT="-p {{ kcptun_port }}:444/udp"
 {% else %}
 KCP_PORT=""
 {% endif %}
