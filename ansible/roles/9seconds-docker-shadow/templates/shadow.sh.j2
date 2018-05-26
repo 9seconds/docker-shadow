@@ -3,16 +3,26 @@
 {{ ansible_managed | comment }}
 set -eu -o pipefail
 
+SS_SIMPLE_PORT=""
+{% if shadowsocks_simple_port is defined %}
+SS_SIMPLE_PORT="-p {{ shadowsocks_simple_port }}:443/tcp -p {{ shadowsocks_simple_port }}:/udp"
+{% endif %}
+
+SS_OBFS_PORT=""
+{% if shadowsocks_obfs_port is defined %}
+SS_SIMPLE_PORT="-p {{ shadowsocks_obfs_port }}:444/tcp -p {{ shadowsocks_obfs_port }}:444/udp"
+{% endif %}
+
+KCP_PORT=""
+{% if kcptun_port is defined %}
+KCP_PORT="-p {{ kcptun_port }}:445/udp"
+{% endif %}
+
 exec /usr/bin/docker run \
     --rm \
     --log-driver none \
     --name {{ container_name | quote }} \
-    -p {{ shadowsocks_port }}:443/tcp \
-    -p {{ shadowsocks_port }}:443/udp \
-    -p {{ kcptun_port }}:444/udp \
+    -v /etc/docker-shadow.json:/config.json:ro \
     {% for key, value in (shadowsocks_sysctl | dictsort) %}--sysctl {{
         "%s=%s" | format(key, value) | quote }} \
-    {% endfor %}{{ docker_image | quote }} \
-    --password {{ shadowsocks_password | quote }} \
-    {{ own_ip_address | quote }} \
-    {{ shadowsocks_entrypoint }}
+    {% endfor %} $SS_SIMPLE_PORT $SS_OBFS_PORT $KCP_PORT {{ docker_image | quote }}

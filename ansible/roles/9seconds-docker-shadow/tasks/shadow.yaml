@@ -3,11 +3,21 @@
 
 - name: get my public IP
   ipify_facts:
-  when: not(shadowsocks_ip_address is defined)
+  when: not(shadow_config.ip is defined)
 
 - name: define own ip address
   set_fact:
-    own_ip_address: "{{ shadowsocks_ip_address | default(ansible_facts.ipify_public_ip) }}"
+    shadow_config: "{{ shadow_config | combine({'ip': ansible_facts.ipify_public_ip}) }}"
+  when: not(shadow_config.ip is defined)
+
+- name: create configuration file for docker shadow
+  become: true
+  copy:
+    content: "{{ shadow_config | to_json }}"
+    dest: /etc/docker-shadow.json
+    owner: root
+    group: root
+    mode: 0644
 
 - name: copy template run file for shadowsocks
   become: true
@@ -35,6 +45,10 @@
     name: "{{ systemd_service_name }}"
     state: started
     enabled: yes
+
+- name: wait a couple of seconds to get container up and running
+  pause:
+    seconds: 10
 
 - name: get config
   become: true

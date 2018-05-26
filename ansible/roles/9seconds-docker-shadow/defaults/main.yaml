@@ -4,12 +4,37 @@
 docker_image: nineseconds/docker-shadow:latest
 systemd_service_name: shadow
 container_name: shadowsocks
+use_ufw: true
 
-shadowsocks_port: 443
-kcptun_port: 444
+shadow_config:
+  # if you won't set this IP, this would be autodetected by ipify
+  # ip: 127.0.0.1
+  shadowsocks:
+    # following settings are optional. only password is mandatory
+    # reuse_port: true
+    # fast_open: true
+    # ipv6_first: true
+    # no_delay: true
+    # timeout: 60
+    # nameserver: 1.1.1.1
+    # method: chacha20-ietf-poly1305
+    password: verysecret
+  obfs:
+    # all settings are optional for obfs
+    mode: tls
+    host: github.com
+  kcptun:
+    # following settings are optional. only key is mandatory
+    # profile: fast
+    # crypt: none
+    # compression: false
+    # dscp: 0
+    # datashard: 10
+    # parityshard: 3
+    key: kcptuniskcptun
+
+shadowsocks_simple_port: 443
+shadowsocks_obfs_port: 444
+kcptun_port: 445
 shadowsocks_password: password
 shadowsocks_entrypoint: obfs tls
-# if you do not setup this address, it will use ansible_default_ipv4.address
-# shadowsocks_ip_address: 127.0.0.1
-
-use_ufw: true
