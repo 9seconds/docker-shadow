@@ -53,7 +53,7 @@ EXPOSE 443/tcp 443/udp
 USER root
 
 RUN set -ex \
-  && apk add --update --no-cache runit
+  && apk add --update --no-cache runit rng-tools
 
 COPY --from=entrypoint /entry /entry
 COPY --from=v2ray-plugin /plugin /usr/bin/v2ray-plugin
