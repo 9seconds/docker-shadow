@@ -13,16 +13,14 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"syscall"
 )
 
 const (
 	pathOwnConfig         = "/config.json"
 	pathShadowSocksConfig = "/etc/shadowsocks.json"
-	pathKCPTunConfig      = "/etc/kcptun.json"
 
-	defaultShadowSocksReustPort  = true
+	defaultShadowSocksReusePort  = true
 	defaultShadowSocksIPV6First  = false // 'true' breaks outline
 	defaultShadowSocksFastOpen   = true
 	defaultShadowSocksNoDelay    = true
@@ -30,19 +28,7 @@ const (
 	defaultShadowSocksNameServer = "1.1.1.1"
 	defaultShadowSocksMethod     = "chacha20-ietf-poly1305"
 
-	defaultKCPTunProfile     = "fast"
-	defaultKCPTunCrypt       = "none"
-	defaultKCPTunDSCP        = 0
-	defaultKCPTunCompression = false
-	defaultKCPTunDataShard   = 10
-	defaultKCPTunParityShard = 3
-	defaultKCPTunMTU         = 1350
-
-	defaultObfsMode = "tls"
-	defaultObfsHost = "cx01.cloudfront.net"
-
 	portShadowSocks = 443
-	portKCPTun      = 444
 
 	qrCodeURL = `https://api.qrserver.com/v1/create-qr-code/?format=svg&qzone=4&data=%s`
 )
@@ -67,34 +53,6 @@ var (
 		"salsa20":                struct{}{},
 		"chacha20":               struct{}{},
 		"chacha20-ietf":          struct{}{},
-	}
-
-	availableKCPTunProfiles = map[string]struct{}{
-		"normal": struct{}{},
-		"fast":   struct{}{},
-		"fast2":  struct{}{},
-		"fast3":  struct{}{},
-	}
-
-	availableKCPTunCiphers = map[string]struct{}{
-		"aes":      struct{}{},
-		"aes-128":  struct{}{},
-		"aes-192":  struct{}{},
-		"salsa20":  struct{}{},
-		"blowfish": struct{}{},
-		"twofish":  struct{}{},
-		"cast5":    struct{}{},
-		"3des":     struct{}{},
-		"tea":      struct{}{},
-		"xtea":     struct{}{},
-		"xor":      struct{}{},
-		"sm4":      struct{}{},
-		"none":     struct{}{},
-	}
-
-	availableObfsModes = map[string]struct{}{
-		"http": struct{}{},
-		"tls":  struct{}{},
 	}
 )
 
@@ -126,32 +84,7 @@ type shadowSocksConfigFile struct {
 	PluginOpts string   `json:"plugin_opts,omitempty"`
 }
 
-type kcpTunOwnConfig struct {
-	Profile     string `json:"profile"`
-	Crypt       string `json:"crypt"`
-	Compression bool   `json:"compression"`
-	Key         string `json:"key"`
-	MTU         uint   `json:"mtu"`
-	DSCP        uint   `json:"dscp"`
-	DataShard   uint   `json:"datashard"`
-	ParityShard uint   `json:"parityshard"`
-}
-
-type kcpTunConfigFile struct {
-	Listen      string `json:"listen"`
-	Target      string `json:"target"`
-	Crypt       string `json:"crypt"`
-	Mode        string `json:"mode"`
-	Key         string `json:"key"`
-	MTU         uint   `json:"mtu"`
-	DSCP        uint   `json:"dscp"`
-	NoComp      bool   `json:"nocomp"`
-	DataShard   uint   `json:"datashard"`
-	ParityShard uint   `json:"parityshard"`
-}
-
-type obfsOwnConfig struct {
-	Mode string `json:"mode"`
+type pluginConfig struct {
 	Host string `json:"host"`
 }
 
@@ -159,13 +92,11 @@ type ownConfig struct {
 	IP          string               `json:"ip"`
 	Name        string               `json:"name"`
 	ShadowSocks shadowSocksOwnConfig `json:"shadowsocks"`
-	KCPTun      kcpTunOwnConfig      `json:"kcptun"`
-	OBFS        obfsOwnConfig        `json:"obfs"`
 }
 
 func (c *ownConfig) shadowSocksConfig() *shadowSocksConfigFile {
 	return &shadowSocksConfigFile{
-		Server:     []string{"[::0]", "0.0.0.0"},
+		Server:     []string{"0.0.0.0"},
 		ServerPort: portShadowSocks,
 		Password:   c.ShadowSocks.Password,
 		Method:     c.ShadowSocks.Method,
@@ -177,23 +108,8 @@ func (c *ownConfig) shadowSocksConfig() *shadowSocksConfigFile {
 		IPV6First:  c.ShadowSocks.IPV6First,
 		NameServer: c.ShadowSocks.NameServer,
 		Mode:       "tcp_and_udp",
-		Plugin:     "obfs-server",
-		PluginOpts: fmt.Sprintf("obfs=%s;failover=%s", c.OBFS.Mode, c.OBFS.Host),
-	}
-}
-
-func (c *ownConfig) kcpTunConfig() *kcpTunConfigFile {
-	return &kcpTunConfigFile{
-		Listen:      fmt.Sprintf(":%d", portKCPTun),
-		Target:      net.JoinHostPort("127.0.0.1", strconv.Itoa(portShadowSocks)),
-		Crypt:       c.KCPTun.Crypt,
-		Mode:        c.KCPTun.Profile,
-		Key:         c.KCPTun.Key,
-		DSCP:        c.KCPTun.DSCP,
-		MTU:         c.KCPTun.MTU,
-		NoComp:      !c.KCPTun.Compression,
-		DataShard:   c.KCPTun.DataShard,
-		ParityShard: c.KCPTun.ParityShard,
+		Plugin:     "v2ray-plugin",
+		PluginOpts: "server",
 	}
 }
 
@@ -202,10 +118,6 @@ func (c *ownConfig) shadowSocksURL() *url.URL {
 		Scheme: "ss",
 		Host:   net.JoinHostPort(c.IP, strconv.Itoa(portShadowSocks)),
 		User:   url.User(c.getShadowSocksUser()),
-		RawQuery: c.makePluginQuery("obfs-local", map[string]string{
-			"obfs":      c.OBFS.Mode,
-			"obfs-host": c.OBFS.Host,
-		}),
 	}
 	if c.Name != "" {
 		u.Fragment = c.Name
@@ -214,41 +126,9 @@ func (c *ownConfig) shadowSocksURL() *url.URL {
 	return u
 }
 
-func (c *ownConfig) kcpTunURL() *url.URL {
-	base := c.shadowSocksURL()
-	base.Host = net.JoinHostPort(c.IP, strconv.Itoa(portKCPTun))
-	params := map[string]string{
-		"crypt":       c.KCPTun.Crypt,
-		"mode":        c.KCPTun.Profile,
-		"datashard":   strconv.Itoa(int(c.KCPTun.DataShard)),
-		"parityshard": strconv.Itoa(int(c.KCPTun.ParityShard)),
-		"mtu":         strconv.Itoa(int(c.KCPTun.MTU)),
-		"dscp":        strconv.Itoa(int(c.KCPTun.DSCP)),
-		"key":         c.KCPTun.Key,
-	}
-	if !c.KCPTun.Compression {
-		params["nocomp"] = "true"
-	}
-	base.RawQuery = c.makePluginQuery("kcptun", params)
-
-	return base
-}
-
 func (c *ownConfig) getShadowSocksUser() string {
 	decoded := fmt.Sprintf("%s:%s", c.ShadowSocks.Method, c.ShadowSocks.Password)
 	return base64.URLEncoding.EncodeToString([]byte(decoded))
-}
-
-func (c *ownConfig) makePluginQuery(name string, options map[string]string) string {
-	chunks := []string{name}
-	for k, v := range options {
-		chunks = append(chunks, fmt.Sprintf("%s=%s", k, v))
-	}
-
-	values := url.Values{}
-	values.Set("plugin", strings.Join(chunks, ";"))
-
-	return values.Encode()
 }
 
 func main() {
@@ -278,10 +158,7 @@ func main() {
 
 func mainRun(conf *ownConfig) {
 	if err := writeConfig(pathShadowSocksConfig, conf.shadowSocksConfig()); err != nil {
-		log.Fatal("Cannot write shadowsocks config: %s", err.Error())
-	}
-	if err := writeConfig(pathKCPTunConfig, conf.kcpTunConfig()); err != nil {
-		log.Fatal("Cannot write kcptun config: %s", err.Error())
+		panic(err)
 	}
 
 	if err := syscall.Exec("/sbin/runsvdir", []string{"/sbin/runsvdir", "/etc/service"}, os.Environ()); err != nil {
@@ -292,7 +169,6 @@ func mainRun(conf *ownConfig) {
 func mainShow(conf *ownConfig) {
 	dataToShow := map[string]map[string]string{
 		"shadowsocks": makeResult(conf.shadowSocksURL()),
-		"kcptun":      makeResult(conf.kcpTunURL()),
 	}
 
 	if err := encodeJSON(os.Stdout, dataToShow); err != nil {
@@ -325,26 +201,13 @@ func writeConfig(path string, config interface{}) error {
 func makeOwnConfig() (*ownConfig, error) {
 	ownConf := &ownConfig{
 		ShadowSocks: shadowSocksOwnConfig{
-			ReusePort:  defaultShadowSocksReustPort,
+			ReusePort:  defaultShadowSocksReusePort,
 			IPV6First:  defaultShadowSocksIPV6First,
 			NoDelay:    defaultShadowSocksNoDelay,
 			Timeout:    defaultShadowSocksTimeout,
 			NameServer: defaultShadowSocksNameServer,
 			Method:     defaultShadowSocksMethod,
 			FastOpen:   defaultShadowSocksFastOpen,
-		},
-		KCPTun: kcpTunOwnConfig{
-			Profile:     defaultKCPTunProfile,
-			Crypt:       defaultKCPTunCrypt,
-			Compression: defaultKCPTunCompression,
-			DataShard:   defaultKCPTunDataShard,
-			ParityShard: defaultKCPTunParityShard,
-			DSCP:        defaultKCPTunDSCP,
-			MTU:         defaultKCPTunMTU,
-		},
-		OBFS: obfsOwnConfig{
-			Mode: defaultObfsMode,
-			Host: defaultObfsHost,
 		},
 	}
 
@@ -365,20 +228,6 @@ func makeOwnConfig() (*ownConfig, error) {
 	}
 	if _, ok := availableShadowSocksCiphers[ownConf.ShadowSocks.Method]; !ok {
 		return nil, errors.New("Unknown crypt method")
-	}
-
-	if ownConf.KCPTun.Key == "" {
-		return nil, errors.New("KCPTun key has to be set")
-	}
-	if _, ok := availableKCPTunCiphers[ownConf.KCPTun.Crypt]; !ok {
-		return nil, errors.New("Unsupported KCPTun crypt is set")
-	}
-	if _, ok := availableKCPTunProfiles[ownConf.KCPTun.Profile]; !ok {
-		return nil, errors.New("Unsupported KCPTun profile is set")
-	}
-
-	if _, ok := availableObfsModes[ownConf.OBFS.Mode]; !ok {
-		return nil, errors.New("Unsupported OBFS mode")
 	}
 
 	return ownConf, nil
